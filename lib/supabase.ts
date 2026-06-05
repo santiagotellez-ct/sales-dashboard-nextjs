@@ -171,51 +171,62 @@ function parseDeal(raw: any): ProcessedDeal {
 // Fetch all deals from Supabase with stage names via JOIN
 async function fetchAllDeals(): Promise<ProcessedDeal[]> {
   const allDeals: ProcessedDeal[] = [];
-  let offset = 0;
-  const limit = 500;
-  let hasMore = true;
 
   console.log("[supabase] Fetching deals...");
 
-  while (hasMore) {
-    try {
-      // Start simple - just get all fields without JOIN
-      const result = await supabase
-        .from("deals")
-        .select("*")
-        .range(offset, offset + limit - 1);
+  try {
+    // Add timeout of 5 seconds to prevent hanging
+    const timeoutPromise = new Promise<null>((resolve) =>
+      setTimeout(() => {
+        console.error("[supabase] Query timeout after 5 seconds");
+        resolve(null);
+      }, 5000)
+    );
 
-      const { data, error } = result;
+    const queryPromise = (async () => {
+      try {
+        console.log("[supabase] Starting query...");
+        const result = await supabase
+          .from("deals")
+          .select("*")
+          .range(0, 499);
 
-      if (error) {
-        console.error("[supabase] Query error:", JSON.stringify(error));
-        break;
+        console.log("[supabase] Query completed");
+        return result;
+      } catch (e) {
+        console.error("[supabase] Query exception:", e);
+        return null;
       }
+    })();
 
-      if (!data) {
-        console.error("[supabase] No data returned");
-        break;
-      }
+    const result = await Promise.race([queryPromise, timeoutPromise]);
 
-      console.log("[supabase] Query successful, got records:", data.length);
-
-      const records = data || [];
-
-      for (const raw of records) {
-        allDeals.push(parseDeal(raw));
-      }
-
-      console.log(`[supabase] Deals: ${allDeals.length} (offset ${offset})`);
-
-      if (records.length < limit) {
-        hasMore = false;
-      } else {
-        offset += limit;
-      }
-    } catch (err) {
-      console.error("[supabase] Catch error:", err);
-      break;
+    if (!result) {
+      console.error("[supabase] No result from query");
+      return [];
     }
+
+    const { data, error } = result as any;
+
+    if (error) {
+      console.error("[supabase] Query error:", error);
+      return [];
+    }
+
+    if (!data || !Array.isArray(data)) {
+      console.error("[supabase] Invalid data format");
+      return [];
+    }
+
+    console.log("[supabase] Query successful, got records:", data.length);
+
+    for (const raw of data) {
+      allDeals.push(parseDeal(raw));
+    }
+
+    console.log(`[supabase] Processed deals: ${allDeals.length}`);
+  } catch (err) {
+    console.error("[supabase] Unexpected error:", err);
   }
 
   return allDeals;
