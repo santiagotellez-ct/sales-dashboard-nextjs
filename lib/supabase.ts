@@ -1,6 +1,14 @@
 /**
  * Supabase client for fetching Deals pipeline
  * Replaces Attio integration with direct DB access
+ *
+ * Includes all fields from Supabase schema:
+ * - Core: id, name, company_id, company_name, stage_id, value, currency, event
+ * - People: account_executive, sdr, secondary_ae
+ * - Dates: created_at, updated_at, expected_close_date, billing_date, collection_date
+ * - Details: notes, meeting_id, lost_reason, checklist
+ * - Ecosystem: paquete_vendido, adicionales_para, sponsor_pain, sponsor_icp
+ * - Commits: commit_speaking_*, commit_works_*, commit_stand, commit_experi*
  */
 
 import { createClient } from '@supabase/supabase-js';
@@ -23,6 +31,24 @@ export interface ProcessedDeal {
   quarter: string;
   stage_changed_at: string;
   associated_company_id: string;
+  // Extended fields from Supabase
+  company_name?: string;
+  expected_close_date?: string;
+  billing_date?: string;
+  collection_date?: string;
+  notes?: string;
+  meeting_id?: string;
+  lost_reason?: string;
+  secondary_ae?: string;
+  paquete_vendido?: string;
+  adicionales_para?: string;
+  sponsor_pain?: boolean | string;
+  sponsor_icp?: boolean | string;
+  checklist?: any;
+  commit_speaking?: any;
+  commit_works?: any;
+  commit_stand?: string;
+  commit_experi?: string;
 }
 
 export interface ProcessedMeetingEntry {
@@ -121,6 +147,24 @@ function parseDeal(raw: any): ProcessedDeal {
     quarter: assignQuarter(createdAt),
     stage_changed_at: stageChangedAt,
     associated_company_id: raw.company_id || "",
+    // Extended fields from Supabase
+    company_name: raw.company_name || "",
+    expected_close_date: raw.expected_close_date || "",
+    billing_date: raw.billing_date || "",
+    collection_date: raw.collection_date || "",
+    notes: raw.notes || "",
+    meeting_id: raw.meeting_id || "",
+    lost_reason: raw.lost_reason || "",
+    secondary_ae: raw.secondary_ae || "",
+    paquete_vendido: raw.paquete_vendido || "",
+    adicionales_para: raw.adicionales_para || "",
+    sponsor_pain: raw.sponsor_pain || false,
+    sponsor_icp: raw.sponsor_icp || false,
+    checklist: raw.checklist || null,
+    commit_speaking: raw.commit_speaking_keynote || raw.commit_speaking_workshop || null,
+    commit_works: raw.commit_works || null,
+    commit_stand: raw.commit_stand || "",
+    commit_experi: raw.commit_experience || "",
   };
 }
 
@@ -134,6 +178,39 @@ async function fetchAllDeals(): Promise<ProcessedDeal[]> {
 
   console.log("[supabase] Fetching deals...");
 
+  // Define all fields from deals table
+  const dealsFields = `
+    id,
+    name,
+    company_id,
+    company_name,
+    stage_id,
+    account_executive,
+    sdr,
+    secondary_ae,
+    value,
+    currency,
+    event,
+    created_at,
+    updated_at,
+    expected_close_date,
+    billing_date,
+    collection_date,
+    notes,
+    meeting_id,
+    lost_reason,
+    paquete_vendido,
+    adicionales_para,
+    sponsor_pain,
+    sponsor_icp,
+    checklist,
+    commit_speaking_keynote,
+    commit_speaking_workshop,
+    commit_works,
+    commit_stand,
+    commit_experience
+  `;
+
   while (hasMore) {
     let result: { data: any[] | null; error: any };
 
@@ -141,7 +218,7 @@ async function fetchAllDeals(): Promise<ProcessedDeal[]> {
       // Try query with stage info via foreign key relationship
       result = await supabase
         .from("deals")
-        .select("*, deal_stages(id, name)")
+        .select(`${dealsFields}, deal_stages(id, name)`)
         .range(offset, offset + limit - 1);
 
       // If JOIN fails, disable it for future iterations
@@ -150,14 +227,14 @@ async function fetchAllDeals(): Promise<ProcessedDeal[]> {
         useJoin = false;
         result = await supabase
           .from("deals")
-          .select("*")
+          .select(dealsFields)
           .range(offset, offset + limit - 1);
       }
     } else {
       // Simple select without stage relationship
       result = await supabase
         .from("deals")
-        .select("*")
+        .select(dealsFields)
         .range(offset, offset + limit - 1);
     }
 
