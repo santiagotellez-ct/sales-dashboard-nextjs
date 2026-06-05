@@ -1,4 +1,4 @@
-import { getAllData } from '@/lib/attio';
+import { getAllData } from '@/lib/supabase';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';

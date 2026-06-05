@@ -5,7 +5,7 @@
 // AE meeting counts fall back to deal-count proxies where calendar data
 // is referenced. See app/api/ae-meetings/route.ts for the stub endpoint.
 
-import { getWeekKey, type ProcessedDeal, type ProcessedMeetingEntry } from "./attio";
+import { getWeekKey, type ProcessedDeal, type ProcessedMeetingEntry } from "./supabase";
 
 // ══════════════════════════════════════════
 // AE NAME NORMALIZATION

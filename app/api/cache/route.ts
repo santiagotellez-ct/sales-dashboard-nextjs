@@ -1,4 +1,4 @@
-import { getCacheInfo, clearCache } from '@/lib/attio';
+import { getCacheInfo, clearCache } from '@/lib/supabase';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';

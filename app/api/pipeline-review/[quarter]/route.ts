@@ -1,4 +1,4 @@
-import { getAllData, getCacheInfo } from '@/lib/attio';
+import { getAllData, getCacheInfo } from '@/lib/supabase';
 import { computePipelineReviewData } from '@/lib/business-logic';
 
 export const runtime = 'nodejs';
