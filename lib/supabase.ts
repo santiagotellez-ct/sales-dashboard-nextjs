@@ -201,8 +201,6 @@ async function fetchAllDeals(): Promise<ProcessedDeal[]> {
 
       const records = data || [];
 
-    const records = data || [];
-
       for (const raw of records) {
         allDeals.push(parseDeal(raw));
       }
