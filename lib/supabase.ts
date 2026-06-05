@@ -174,89 +174,49 @@ async function fetchAllDeals(): Promise<ProcessedDeal[]> {
   let offset = 0;
   const limit = 500;
   let hasMore = true;
-  let useJoin = true;
 
   console.log("[supabase] Fetching deals...");
 
-  // Define all fields from deals table
-  const dealsFields = `
-    id,
-    name,
-    company_id,
-    company_name,
-    stage_id,
-    account_executive,
-    sdr,
-    secondary_ae,
-    value,
-    currency,
-    event,
-    created_at,
-    updated_at,
-    expected_close_date,
-    billing_date,
-    collection_date,
-    notes,
-    meeting_id,
-    lost_reason,
-    paquete_vendido,
-    adicionales_para,
-    sponsor_pain,
-    sponsor_icp,
-    checklist,
-    commit_speaking_keynote,
-    commit_speaking_workshop,
-    commit_works,
-    commit_stand,
-    commit_experience
-  `;
-
   while (hasMore) {
-    let result: { data: any[] | null; error: any };
-
-    if (useJoin) {
-      // Try query with stage info via foreign key relationship
-      result = await supabase
+    try {
+      // Start simple - just get all fields without JOIN
+      const result = await supabase
         .from("deals")
-        .select(`${dealsFields}, deal_stages(id, name)`)
+        .select("*")
         .range(offset, offset + limit - 1);
 
-      // If JOIN fails, disable it for future iterations
-      if (result.error) {
-        console.warn("[supabase] JOIN query failed, falling back to simple select", result.error);
-        useJoin = false;
-        result = await supabase
-          .from("deals")
-          .select(dealsFields)
-          .range(offset, offset + limit - 1);
+      const { data, error } = result;
+
+      if (error) {
+        console.error("[supabase] Query error:", JSON.stringify(error));
+        break;
       }
-    } else {
-      // Simple select without stage relationship
-      result = await supabase
-        .from("deals")
-        .select(dealsFields)
-        .range(offset, offset + limit - 1);
-    }
 
-    const { data, error } = result;
+      if (!data) {
+        console.error("[supabase] No data returned");
+        break;
+      }
 
-    if (error) {
-      console.error(`[supabase] Deals query error:`, error);
-      break;
-    }
+      console.log("[supabase] Query successful, got records:", data.length);
+
+      const records = data || [];
 
     const records = data || [];
 
-    for (const raw of records) {
-      allDeals.push(parseDeal(raw));
-    }
+      for (const raw of records) {
+        allDeals.push(parseDeal(raw));
+      }
 
-    console.log(`[supabase] Deals: ${allDeals.length} (offset ${offset})`);
+      console.log(`[supabase] Deals: ${allDeals.length} (offset ${offset})`);
 
-    if (records.length < limit) {
-      hasMore = false;
-    } else {
-      offset += limit;
+      if (records.length < limit) {
+        hasMore = false;
+      } else {
+        offset += limit;
+      }
+    } catch (err) {
+      console.error("[supabase] Catch error:", err);
+      break;
     }
   }
 
